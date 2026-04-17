@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RestoCore AI — Restoration & Roofing Operations</title>
+<style>
+  :root {
+    --navy: #0D2137;
+    --teal: #0F7B6C;
+    --teal-light: #E0F4F1;
+    --amber: #D97706;
+    --amber-light: #FEF3C7;
+    --red: #DC2626;
+    --green: #059669;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --surface: #f9fafb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--surface); color: var(--text); }
+  .topbar { background: var(--navy); color: #fff; height: 56px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 18px; font-weight: 700; }
+  .logo span { color: #2dd4bf; }
+  .sys-status { display: flex; align-items: center; gap: 14px; font-size: 12px; }
+  .live-badge { background: rgba(5,150,105,0.3); color: #34d399; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+  .shell { display: grid; grid-template-columns: 220px 1fr; height: calc(100vh - 56px); }
+  .sidebar { background: #fff; border-right: 1px solid var(--border); padding: 16px 0; overflow-y: auto; }
+  .nav-section { padding: 8px 16px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: var(--text); cursor: pointer; border-left: 3px solid transparent; }
+  .nav-item:hover { background: var(--teal-light); }
+  .nav-item.active { background: var(--teal-light); border-left-color: var(--teal); color: var(--teal); font-weight: 600; }
+  .nav-badge { margin-left: auto; background: var(--red); color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+  .main { overflow-y: auto; padding: 24px; }
+
+  .page-title { font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .page-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--navy); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+  .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+  .panel-body { padding: 16px 20px; }
+
+  .job-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .job-row:last-child { border-bottom: none; }
+  .job-avatar { width: 34px; height: 34px; border-radius: 8px; background: var(--navy); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .job-meta { flex: 1; }
+  .job-title { font-size: 13px; font-weight: 600; }
+  .job-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }
+  .b-water { background: #eff6ff; color: #1d4ed8; }
+  .b-fire  { background: #fff7ed; color: #c2410c; }
+  .b-mould { background: #f0fdf4; color: #166534; }
+  .b-roof  { background: #fef9c3; color: #854d0e; }
+  .status-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .sc-active   { background: #f0fdf4; color: #166534; }
+  .sc-scope    { background: #eff6ff; color: #1d4ed8; }
+  .sc-pending  { background: var(--amber-light); color: var(--amber); }
+  .sc-closed   { background: #f3f4f6; color: #374151; }
+
+  .alert-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 7px; font-size: 12px; margin-bottom: 10px; }
+  .alert-warn { background: var(--amber-light); border-left: 4px solid var(--amber); }
+  .alert-crit { background: #fef2f2; border-left: 4px solid var(--red); }
+  .alert-ok   { background: var(--teal-light); border-left: 4px solid var(--teal); }
+
+  .scope-line { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .scope-line:last-child { border-bottom: none; }
+  .scope-item { flex: 1; }
+  .scope-qty { width: 40px; text-align: right; color: var(--muted); }
+  .scope-cost { width: 70px; text-align: right; font-weight: 600; color: var(--navy); }
+
+  .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .photo-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; }
+  .photo-thumb { height: 80px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: linear-gradient(135deg, #e8f4fd, #d0eaf7); }
+  .photo-info { padding: 6px 8px; font-size: 11px; }
+  .photo-fault { font-weight: 700; color: var(--navy); }
+  .photo-conf { color: var(--teal); font-weight: 600; }
+
+  .moisture-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+  .moisture-cell { border-radius: 6px; padding: 10px 8px; text-align: center; font-size: 11px; font-weight: 700; }
+  .m-high { background: #fef2f2; color: var(--red); }
+  .m-med  { background: var(--amber-light); color: var(--amber); }
+  .m-low  { background: var(--teal-light); color: var(--teal); }
+
+  .timeline-item { display: flex; gap: 12px; padding: 8px 0; }
+  .timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex-shrink: 0; margin-top: 5px; }
+  .timeline-content { flex: 1; font-size: 12px; line-height: 1.6; }
+  .timeline-time { font-size: 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Resto<span>Core</span> AI</div>
+  <div class="sys-status">
+    <div class="live-badge">● Live Production</div>
+    <div style="opacity:0.6;font-size:12px">NextLevel Demo</div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="sidebar">
+    <div class="nav-section">Operations</div>
+    <div class="nav-item active" onclick="showTab('jobs',this)"><span>📋</span> All Jobs <span class="nav-badge">6</span></div>
+    <div class="nav-item" onclick="showTab('diagnose',this)"><span>📷</span> AI Diagnosis</div>
+    <div class="nav-item" onclick="showTab('scope',this)"><span>📐</span> Scope of Work</div>
+    <div class="nav-section">Restoration</div>
+    <div class="nav-item" onclick="showTab('moisture',this)"><span>💧</span> Moisture Mapping</div>
+    <div class="nav-item" onclick="showTab('equipment',this)"><span>🔧</span> Equipment Log</div>
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" onclick="showTab('billing',this)"><span>💳</span> Invoicing</div>
+    <div class="nav-section">Agents</div>
+    <div class="nav-item" onclick="showTab('agents',this)"><span>🤖</span> Agent Log</div>
+    <div class="nav-section">Admin</div>
+    <div class="nav-item"><span>🏢</span> Clients</div>
+    <div class="nav-item"><span>📊</span> Reports</div>
+  </div>
+
+  <div class="main">
+
+    <!-- JOBS -->
+    <div id="tab-jobs">
+      <div class="page-title">Active Jobs</div>
+      <div class="page-sub">Friday 17 April 2026 — 6 active restoration and roofing jobs</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Active Jobs</div><div class="stat-value">6</div><div class="stat-sub">Water: 3 / Fire: 1 / Mould: 1 / Roof: 1</div></div>
+        <div class="stat-card"><div class="stat-label">AI Scopes Generated</div><div class="stat-value">4</div><div class="stat-sub" style="color:var(--teal)">Avg 8 min per scope</div></div>
+        <div class="stat-card"><div class="stat-label">Equipment On Site</div><div class="stat-value">14</div><div class="stat-sub">Dehumidifiers + air movers</div></div>
+        <div class="stat-card"><div class="stat-label">Revenue Pipeline</div><div class="stat-value">£38k</div><div class="stat-sub" style="color:var(--green)">↑ 12% vs last month</div></div>
+      </div>
+
+      <div class="alert-bar alert-crit">🔴 <strong>Job #R-112 — 8 Donegall Sq:</strong> Moisture readings above 80% in two rooms. Agent recommends additional dehumidifier deployment today.</div>
+      <div class="alert-bar alert-warn">🟡 <strong>Job #R-115 — Fire Damage:</strong> Scope awaiting sign-off. Insurance adjuster booked for tomorrow 10am.</div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header"><div class="panel-title">Job List — AI Prioritised</div><div style="font-size:11px;color:var(--muted)">Sorted by urgency score</div></div>
+        <div class="panel-body">
+          <div class="job-row"><div class="job-avatar" style="background:#dc2626">W</div><div class="job-meta"><div class="job-title">#R-112 — 8 Donegall Sq, BT1 — Water Ingress</div><div class="job-sub">3 rooms affected • Day 4 of drying • Moisture still elevated</div><div><span class="badge b-water">Water</span><span class="badge b-mould">Mould Risk</span></div></div><div class="status-chip sc-active">Active</div></div>
+          <div class="job-row"><div class="job-avatar" style="background:#c2410c">F</div><div class="job-meta"><div class="job-title">#R-115 — 14 Great Victoria St, BT2 — Fire Damage</div><div class="job-sub">Kitchen + hallway • AI scope generated • Awaiting sign-off</div><div><span class="badge b-fire">Fire</span></div></div><div class="status-chip sc-scope">Scope Ready</div></div>
+          <div class="job-row"><div class="job-avatar" style="background:var(--teal)">W</div><div class="job-meta"><div class="job-title">#R-116 — Mullan House, Lisburn Rd — Water Leak</div><div class="job-sub">Pipe burst, ground floor • Day 1 • Equipment installed</div><div><span class="badge b-water">Water</span></div></div><div class="status-chip sc-active">Active</div></div>
+          <div class="job-row"><div class="job-avatar" style="background:#166534">M</div><div class="job-meta"><div class="job-title">#R-117 — 33 Stranmillis Rd, BT9 — Mould Treatment</div><div class="job-sub">Bathroom + bedroom ceiling • Remediation started</div><div><span class="badge b-mould">Mould</span></div></div><div class="status-chip sc-active">Active</div></div>
+          <div class="job-row"><div class="job-avatar" style="background:#854d0e">R</div><div class="job-meta"><div class="job-title">#R-118 — 22 Ormeau Rd, BT7 — Storm Roof Damage</div><div class="job-sub">Tiles off, felt exposed • Emergency cover fitted • Full repair scheduled</div><div><span class="badge b-roof">Roofing</span></div></div><div class="status-chip sc-pending">Quote Sent</div></div>
+          <div class="job-row"><div class="job-avatar" style="background:var(--teal)">W</div><div class="job-meta"><div class="job-title">#R-119 — 4 Cyprus Ave, BT5 — Burst Pipe</div><div class="job-sub">Emergency call 07:22am • Crew dispatched • Extraction in progress</div><div><span class="badge b-water">Water</span></div></div><div class="status-chip sc-active">Active</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIAGNOSIS -->
+    <div id="tab-diagnose" style="display:none">
+      <div class="page-title">AI Photo &amp; Video Diagnosis</div>
+      <div class="page-sub">Trained on 40,000 field images — water, fire, mould, and roofing faults</div>
+
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:36px;text-align:center;cursor:pointer;margin-bottom:20px" onclick="runDiagnosis()">
+        📷 <strong>Upload photo or video for instant AI diagnosis</strong><br>
+        <span style="font-size:12px;color:var(--muted)">Accepts JPEG, PNG, MP4 — any restoration or roofing fault</span>
+      </div>
+
+      <div id="diag-box" style="display:none;background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:12px;font-size:14px">🤖 Diagnosis Agent — Analysis Complete</div>
+        <div class="alert-bar alert-ok" style="margin-bottom:12px">✓ Fault identified with 93% confidence</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:12px;line-height:1.9">
+          <div><strong>Fault type:</strong> Category 2 water damage — greywater intrusion<br><strong>Affected area:</strong> Approx 18m² floor, 6m² wall<br><strong>Moisture level:</strong> 76–84% (critical range)<br><strong>Mould risk:</strong> High if not dried within 48hrs</div>
+          <div><strong>Recommended action:</strong> 2x dehumidifiers + 3x air movers for minimum 4 days<br><strong>Scope estimate:</strong> £2,400–£3,100<br><strong>Insurance category:</strong> STD-CAT2 (auto-populated)<br><strong>Crew required:</strong> 2 technicians</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Recent Diagnoses</div></div>
+        <div class="panel-body">
+          <div class="photo-grid">
+            <div class="photo-card"><div class="photo-thumb">💧</div><div class="photo-info"><div class="photo-fault">Category 2 Water</div><div class="photo-conf">93% confidence</div><div style="color:var(--muted);font-size:10px">#R-116 • Today 09:14</div></div></div>
+            <div class="photo-card"><div class="photo-thumb">🔥</div><div class="photo-info"><div class="photo-fault">Fire — char depth 8mm</div><div class="photo-conf">88% confidence</div><div style="color:var(--muted);font-size:10px">#R-115 • Today 08:30</div></div></div>
+            <div class="photo-card"><div class="photo-thumb">🟢</div><div class="photo-info"><div class="photo-fault">Mould — Aspergillus</div><div class="photo-conf">91% confidence</div><div style="color:var(--muted);font-size:10px">#R-117 • Yesterday</div></div></div>
+            <div class="photo-card"><div class="photo-thumb">🏠</div><div class="photo-info"><div class="photo-fault">Roof — 14 tiles missing</div><div class="photo-conf">96% confidence</div><div style="color:var(--muted);font-size:10px">#R-118 • Yesterday</div></div></div>
+            <div class="photo-card"><div class="photo-thumb">💧</div><div class="photo-info"><div class="photo-fault">Category 1 Water</div><div class="photo-conf">97% confidence</div><div style="color:var(--muted);font-size:10px">#R-112 • 4 days ago</div></div></div>
+            <div class="photo-card"><div class="photo-thumb">🟤</div><div class="photo-info"><div class="photo-fault">Subfloor saturation</div><div class="photo-conf">84% confidence</div><div style="color:var(--muted);font-size:10px">#R-112 • 4 days ago</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCOPE -->
+    <div id="tab-scope" style="display:none">
+      <div class="page-title">AI Scope of Work Generator</div>
+      <div class="page-sub">Job #R-115 — 14 Great Victoria St — Fire Damage — Generated in 7 minutes</div>
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Scope — Kitchen &amp; Hallway</div><div style="font-size:11px;color:var(--teal)">🤖 AI Generated</div></div>
+          <div class="panel-body">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;letter-spacing:0.05em">Demolition</div>
+            <div class="scope-line"><span class="scope-item">Remove charred kitchen units (8 linear m)</span><span class="scope-qty">1</span><span class="scope-cost">£480</span></div>
+            <div class="scope-line"><span class="scope-item">Strip ceiling plaster — kitchen (14m²)</span><span class="scope-qty">14m²</span><span class="scope-cost">£210</span></div>
+            <div class="scope-line"><span class="scope-item">Strip ceiling plaster — hallway (8m²)</span><span class="scope-qty">8m²</span><span class="scope-cost">£120</span></div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin:12px 0 8px;letter-spacing:0.05em">Remediation</div>
+            <div class="scope-line"><span class="scope-item">Soot and smoke treatment — all surfaces</span><span class="scope-qty">1</span><span class="scope-cost">£640</span></div>
+            <div class="scope-line"><span class="scope-item">Odour neutralisation treatment</span><span class="scope-qty">1</span><span class="scope-cost">£280</span></div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin:12px 0 8px;letter-spacing:0.05em">Reinstatement</div>
+            <div class="scope-line"><span class="scope-item">Plasterboard and skim — kitchen ceiling</span><span class="scope-qty">14m²</span><span class="scope-cost">£420</span></div>
+            <div class="scope-line"><span class="scope-item">Plasterboard and skim — hallway ceiling</span><span class="scope-qty">8m²</span><span class="scope-cost">£240</span></div>
+            <div class="scope-line"><span class="scope-item">Redecoration — prime and paint x2 coats</span><span class="scope-qty">22m²</span><span class="scope-cost">£330</span></div>
+            <div style="border-top:2px solid var(--navy);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;color:var(--navy)"><span>Total Scope Estimate</span><span>£2,720</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Insurance Report — Auto Generated</div></div>
+          <div class="panel-body" style="font-size:12px;line-height:1.9">
+            <div style="margin-bottom:8px"><strong>Claim type:</strong> Fire damage — accidental<br><strong>Cause:</strong> Electrical fault — cooker hood<br><strong>Category:</strong> STD-FIRE-1<br><strong>Date of loss:</strong> 14 April 2026<br><strong>Reported:</strong> 15 April 2026</div>
+            <div style="margin-bottom:8px"><strong>Affected areas:</strong><br>Kitchen — severe (char, smoke, soot)<br>Hallway — moderate (smoke, soot)</div>
+            <div><strong>AI diagnosis confidence:</strong> 88%<br><strong>Scope auto-generated:</strong> Yes<br><strong>Photos attached:</strong> 12<br><strong>Adjuster visit:</strong> 18 April 2026, 10:00am</div>
+            <button style="margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer">Export to PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOISTURE -->
+    <div id="tab-moisture" style="display:none">
+      <div class="page-title">Moisture Mapping — Job #R-112</div>
+      <div class="page-sub">8 Donegall Sq — Day 4 of drying — 3 affected rooms</div>
+      <div class="alert-bar alert-crit" style="margin-bottom:16px">🔴 Room 2 and Room 3 still above 75%. Agent recommends second dehumidifier in Room 2 immediately.</div>
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Room 1 — Living Room</div><div style="font-size:11px;color:var(--green)">Drying well</div></div>
+          <div class="panel-body">
+            <div class="moisture-grid">
+              <div class="moisture-cell m-low">38%<br><span style="font-weight:400;font-size:10px">SW</span></div>
+              <div class="moisture-cell m-low">41%<br><span style="font-weight:400;font-size:10px">SE</span></div>
+              <div class="moisture-cell m-med">54%<br><span style="font-weight:400;font-size:10px">NW</span></div>
+              <div class="moisture-cell m-low">44%<br><span style="font-weight:400;font-size:10px">NE</span></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:10px">Target: below 18% — Est. 3 more days</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Room 2 — Dining Room</div><div style="font-size:11px;color:var(--red)">Action needed</div></div>
+          <div class="panel-body">
+            <div class="moisture-grid">
+              <div class="moisture-cell m-high">82%<br><span style="font-weight:400;font-size:10px">SW</span></div>
+              <div class="moisture-cell m-high">79%<br><span style="font-weight:400;font-size:10px">SE</span></div>
+              <div class="moisture-cell m-high">84%<br><span style="font-weight:400;font-size:10px">NW</span></div>
+              <div class="moisture-cell m-med">68%<br><span style="font-weight:400;font-size:10px">NE</span></div>
+            </div>
+            <div style="font-size:11px;color:var(--red);margin-top:10px">🔴 Additional dehumidifier required — agent flagged</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header"><div class="panel-title">Drying Progress — All Rooms</div></div>
+        <div class="panel-body">
+          <div style="font-size:12px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="width:80px;font-weight:600">Room 1</span>
+              <div style="flex:1;background:#e5e7eb;border-radius:4px;height:8px"><div style="width:58%;background:var(--teal);border-radius:4px;height:8px"></div></div>
+              <span style="width:60px;text-align:right;color:var(--teal)">Day 4 / 7</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="width:80px;font-weight:600">Room 2</span>
+              <div style="flex:1;background:#e5e7eb;border-radius:4px;height:8px"><div style="width:25%;background:var(--red);border-radius:4px;height:8px"></div></div>
+              <span style="width:60px;text-align:right;color:var(--red)">Stalled</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:80px;font-weight:600">Room 3</span>
+              <div style="flex:1;background:#e5e7eb;border-radius:4px;height:8px"><div style="width:40%;background:var(--amber);border-radius:4px;height:8px"></div></div>
+              <span style="width:60px;text-align:right;color:var(--amber)">Day 4 / 9</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div id="tab-billing" style="display:none">
+      <div class="page-title">Billing &amp; Payments</div>
+      <div class="page-sub">Month to date — £38,400 invoiced — £31,200 collected</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Invoiced MTD</div><div class="stat-value">£38,400</div><div class="stat-sub" style="color:var(--green)">↑ 12% vs last month</div></div>
+        <div class="stat-card"><div class="stat-label">Collected</div><div class="stat-value" style="color:var(--green)">£31,200</div><div class="stat-sub">81% collection rate</div></div>
+        <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--amber)">£7,200</div><div class="stat-sub">Insurance claims</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Job Value</div><div class="stat-value">£3,840</div><div class="stat-sub" style="color:var(--green)">↑ £240 vs avg</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Invoices — AI Generated from Job Logs</div></div>
+        <div class="panel-body">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px"><div><div style="font-weight:600">#INV-1142 — R-116, Mullan House</div><div style="font-size:11px;color:var(--muted)">Water damage — equipment + labour</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:700;color:var(--navy)">£4,200</div><div style="font-size:11px;color:var(--amber);font-weight:600">Awaiting Insurance</div></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px"><div><div style="font-weight:600">#INV-1141 — R-115, Great Victoria St</div><div style="font-size:11px;color:var(--muted)">Fire damage scope — Stage 1</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:700;color:var(--navy)">£2,720</div><div style="font-size:11px;color:var(--amber);font-weight:600">Pending Sign-off</div></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px"><div><div style="font-weight:600">#INV-1140 — R-112, Donegall Sq</div><div style="font-size:11px;color:var(--muted)">Water damage — 4 day progress invoice</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:700;color:var(--navy)">£3,100</div><div style="font-size:11px;color:var(--green);font-weight:600">Paid ✓</div></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:13px"><div><div style="font-weight:600">#INV-1138 — R-111, Ormeau Rd (complete)</div><div style="font-size:11px;color:var(--muted)">Full water restoration — complete</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:700;color:var(--navy)">£8,400</div><div style="font-size:11px;color:var(--green);font-weight:600">Paid ✓</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENTS -->
+    <div id="tab-agents" style="display:none">
+      <div class="page-title">Agent Collaboration Log</div>
+      <div class="page-sub">All agent decisions and inter-agent communication — today</div>
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Agent Activity — Today</div></div>
+          <div class="panel-body">
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-time">13:42</div><strong>Orchestrator</strong> → Moisture Agent: "Check Room 2 readings for R-112 — day 4 expected target not met."</div></div>
+            <div class="timeline-item"><div class="timeline-dot" style="background:var(--amber)"></div><div class="timeline-content"><div class="timeline-time">13:42</div><strong>Moisture Agent</strong> → Orchestrator: "Room 2 at 82%. Recommend additional dehumidifier. Stall likely caused by subfloor saturation."</div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-time">13:43</div><strong>Orchestrator</strong> → Dispatch: "Deploy spare DHU-7 dehumidifier to 8 Donegall Sq — Room 2. Priority."</div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-time">13:44</div><strong>Comms Agent</strong> (auto): "Client notified of equipment change and revised drying timeline. ETA update sent."</div></div>
+            <div class="timeline-item"><div class="timeline-dot" style="background:var(--teal)"></div><div class="timeline-content"><div class="timeline-time">09:14</div><strong>Diagnosis Agent</strong>: Analysed 3 photos for R-116. Category 2 water damage confirmed. Scope auto-drafted and sent for approval.</div></div>
+            <div class="timeline-item"><div class="timeline-dot" style="background:var(--teal)"></div><div class="timeline-content"><div class="timeline-time">08:30</div><strong>Diagnosis Agent</strong>: Fire damage assessment R-115 complete. Scope of work generated. Insurance report populated.</div></div>
+            <div class="timeline-item"><div class="timeline-dot" style="background:var(--navy)"></div><div class="timeline-content"><div class="timeline-time">07:22</div><strong>Dispatch Agent</strong>: Emergency R-119 received. Nearest crew dispatched in 4 minutes. Client ETA sent automatically.</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Agent Health</div></div>
+          <div class="panel-body" style="font-size:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:4px">Diagnosis</div><div style="color:var(--muted);margin-bottom:8px">6 analyses today</div><div style="background:#e5e7eb;border-radius:4px;height:5px"><div style="width:92%;background:var(--teal);border-radius:4px;height:5px"></div></div></div>
+              <div style="border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:4px">Moisture</div><div style="color:var(--muted);margin-bottom:8px">24 readings logged</div><div style="background:#e5e7eb;border-radius:4px;height:5px"><div style="width:100%;background:var(--teal);border-radius:4px;height:5px"></div></div></div>
+              <div style="border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:4px">Scope Writer</div><div style="color:var(--muted);margin-bottom:8px">4 scopes generated</div><div style="background:#e5e7eb;border-radius:4px;height:5px"><div style="width:80%;background:var(--teal);border-radius:4px;height:5px"></div></div></div>
+              <div style="border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:4px">Billing</div><div style="color:var(--muted);margin-bottom:8px">3 invoices sent</div><div style="background:#e5e7eb;border-radius:4px;height:5px"><div style="width:70%;background:var(--amber);border-radius:4px;height:5px"></div></div></div>
+              <div style="border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:4px">Comms</div><div style="color:var(--muted);margin-bottom:8px">19 messages</div><div style="background:#e5e7eb;border-radius:4px;height:5px"><div style="width:88%;background:var(--teal);border-radius:4px;height:5px"></div></div></div>
+              <div style="border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-weight:700;color:var(--navy);margin-bottom:4px">Orchestrator</div><div style="color:var(--muted);margin-bottom:8px">12 decisions</div><div style="background:#e5e7eb;border-radius:4px;height:5px"><div style="width:95%;background:var(--teal);border-radius:4px;height:5px"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function showTab(name, el) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById('tab-' + name).style.display = '';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+function runDiagnosis() {
+  const box = document.getElementById('diag-box');
+  box.style.display = 'none';
+  setTimeout(() => box.style.display = '', 1400);
+}
+</script>
+</body>
+</html>
